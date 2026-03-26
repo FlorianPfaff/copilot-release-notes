@@ -38,30 +38,36 @@ function buildBaseInstructions(baseRef: string, headRef: string): string {
   return `# Release Notes Generation
 
 You are a release notes writer. Your job is to analyze the pull requests merged
-between \`${baseRef}\` and \`${headRef}\` and generate user-facing release notes.
+between \`${baseRef}\` and \`${headRef}\` and write a clear, concise summary of
+each one.
 
 ## How to Analyze PRs
 
 For each PR listed below, you have the PR title, body, labels, and author.
 You also have access to the git repository. Use \`git diff\` and \`git show\`
 to examine the actual code changes when the PR title and body are insufficient
-to understand the user-facing impact.
+to understand what changed.
 
 For example:
 - \`git diff ${baseRef}..${headRef} -- path/to/file\` to see changes in a specific file
 - \`git log --oneline ${baseRef}..${headRef}\` to see the commit history
 - \`git show <commit-sha>\` to examine a specific commit
 
-## General Guidelines
+## Writing Guidelines
 
-1. **Write for users, not developers** — focus on what changed from the user's perspective
-2. **Be specific but concise** — include feature names, command names, or specific behaviors
-3. **Use present tense** — "Add support for..." not "Added support for..."
-4. **For bug fixes, describe what works now** — not what was broken
-5. **Skip non-user-facing changes** — CI, tests, internal refactoring, dependency bumps
-   (unless they fix security vulnerabilities or change user-visible behavior)
-6. **Flag uncertainty** — if you cannot confidently categorize or summarize a PR,
-   mark it with \`[???]\` so a human can review it`
+1. **One sentence per PR** — write a single, clear sentence summarizing the change
+2. **Write for a broad audience** — assume the reader is familiar with the product
+   but not the codebase. Focus on what changed, not how it was implemented.
+3. **Be specific** — include feature names, command names, or specific behaviors.
+   Avoid vague descriptions like "various improvements" or "minor fixes".
+4. **Use present tense** — "Add support for..." not "Added support for..."
+5. **For fixes, describe what works now** — not what was broken.
+   Say "Resolve issue where X now works correctly" rather than "Fix bug in X"
+6. **Include every PR** — generate a summary for every PR unless custom
+   instructions explicitly say to exclude certain types of changes.
+   Every PR represents work someone did and should be captured.
+7. **Flag uncertainty** — if you cannot confidently summarize a PR, include your
+   best attempt and mark it as uncertain so a human can review it`
 }
 
 function loadInstructions(filePath: string): string | undefined {
@@ -121,43 +127,28 @@ The JSON must follow this exact structure:
 {
   "entries": [
     {
-      "tag": "[Fixed]",
-      "description": "Concise user-facing description",
+      "description": "One-sentence summary of what this PR changes",
       "pr": 1234,
       "author": "username"
     }
   ],
   "uncertainEntries": [
     {
-      "tag": "[???]",
-      "description": "Description needing human review",
+      "description": "Best-attempt summary needing human review",
       "pr": 5678,
       "author": "username",
       "reason": "Why this entry is uncertain"
-    }
-  ],
-  "skippedPRs": [
-    {
-      "pr": 9999,
-      "title": "PR title",
-      "reason": "Why this PR was skipped"
     }
   ]
 }
 \`\`\`
 
-### Entry tags
-
-Use these tags unless the team instructions specify different categories:
-- \`[New]\` — Significant new features (use sparingly — these are release highlights)
-- \`[Added]\` — Smaller features, new commands, discrete additions
-- \`[Fixed]\` — Bug fixes
-- \`[Improved]\` — Enhancements to existing features
-- \`[Removed]\` — Removed functionality
-
 ### Important
 
-- Every PR must appear in exactly one of: entries, uncertainEntries, or skippedPRs
+- Every PR must appear in either entries or uncertainEntries — do not skip any
+  unless custom instructions explicitly tell you to exclude certain types
+- If custom instructions say to skip certain PRs, still include them in a
+  separate "skippedPRs" array: \`[{"pr": 9999, "title": "PR title", "reason": "Why skipped"}]\`
 - Output ONLY the JSON object — no other text before or after it
 - The JSON must be valid and parseable`
 }

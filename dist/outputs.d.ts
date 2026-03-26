@@ -1,11 +1,15 @@
 export interface ReleaseNoteEntry {
-    tag: string;
     description: string;
     pr: number;
     author: string;
+    tag?: string;
 }
-export interface UncertainEntry extends ReleaseNoteEntry {
+export interface UncertainEntry {
+    description: string;
+    pr: number;
+    author: string;
     reason: string;
+    tag?: string;
 }
 export interface SkippedPR {
     pr: number;

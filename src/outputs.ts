@@ -1,14 +1,18 @@
 import * as core from '@actions/core'
 
 export interface ReleaseNoteEntry {
-  tag: string
   description: string
   pr: number
   author: string
+  tag?: string
 }
 
-export interface UncertainEntry extends ReleaseNoteEntry {
+export interface UncertainEntry {
+  description: string
+  pr: number
+  author: string
   reason: string
+  tag?: string
 }
 
 export interface SkippedPR {
@@ -102,40 +106,18 @@ function extractBalancedJSON(str: string): string | null {
 export function formatAsMarkdown(output: ParsedOutput): string {
   const lines: string[] = []
 
-  if (output.entries.length > 0) {
-    // Group by tag
-    const grouped = new Map<string, ReleaseNoteEntry[]>()
-    const tagOrder = ['[New]', '[Added]', '[Fixed]', '[Improved]', '[Removed]']
-
-    for (const entry of output.entries) {
-      const existing = grouped.get(entry.tag) || []
-      existing.push(entry)
-      grouped.set(entry.tag, existing)
-    }
-
-    for (const tag of tagOrder) {
-      const entries = grouped.get(tag)
-      if (!entries) continue
-      for (const entry of entries) {
-        lines.push(`${entry.tag} ${entry.description} - #${entry.pr}`)
-      }
-    }
-
-    // Any remaining tags not in the standard order
-    for (const [tag, entries] of grouped) {
-      if (tagOrder.includes(tag)) continue
-      for (const entry of entries) {
-        lines.push(`${entry.tag} ${entry.description} - #${entry.pr}`)
-      }
-    }
+  for (const entry of output.entries) {
+    const prefix = entry.tag ? `${entry.tag} ` : ''
+    lines.push(`- ${prefix}${entry.description} (#${entry.pr})`)
   }
 
   if (output.uncertainEntries.length > 0) {
     lines.push('')
     lines.push('### Needs Review')
     for (const entry of output.uncertainEntries) {
+      const prefix = entry.tag ? `${entry.tag} ` : ''
       lines.push(
-        `${entry.tag} ${entry.description} - #${entry.pr} _(${entry.reason})_`
+        `- ${prefix}${entry.description} (#${entry.pr}) — _${entry.reason}_`
       )
     }
   }
