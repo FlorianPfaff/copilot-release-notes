@@ -12,6 +12,45 @@ export interface PRInfo {
 }
 
 /**
+ * Detect the owner and repo from the git remote origin URL.
+ * This is needed when the checked-out repo differs from the workflow repo.
+ */
+async function detectRepo(): Promise<{owner: string; repo: string}> {
+  let remoteUrl = ''
+  await exec.exec('git', ['remote', 'get-url', 'origin'], {
+    listeners: {
+      stdout: (data: Buffer) => {
+        remoteUrl += data.toString()
+      }
+    },
+    silent: true
+  })
+  remoteUrl = remoteUrl.trim()
+
+  // Handle HTTPS: https://github.com/owner/repo.git
+  const httpsMatch = remoteUrl.match(
+    /github\.com\/([^/]+)\/([^/.]+?)(?:\.git)?$/
+  )
+  if (httpsMatch) {
+    return {owner: httpsMatch[1], repo: httpsMatch[2]}
+  }
+
+  // Handle SSH: git@github.com:owner/repo.git
+  const sshMatch = remoteUrl.match(
+    /github\.com:([^/]+)\/([^/.]+?)(?:\.git)?$/
+  )
+  if (sshMatch) {
+    return {owner: sshMatch[1], repo: sshMatch[2]}
+  }
+
+  // Fallback to github.context
+  core.warning(
+    `Could not parse remote URL "${remoteUrl}", falling back to workflow context`
+  )
+  return github.context.repo
+}
+
+/**
  * Find PRs between two refs using the configured strategy.
  */
 export async function findPRs(
@@ -116,7 +155,7 @@ async function findPRsViaGitHubAPI(
   headRef: string
 ): Promise<number[]> {
   const octokit = github.getOctokit(getApiToken())
-  const {owner, repo} = github.context.repo
+  const {owner, repo} = await detectRepo()
 
   const comparison = await octokit.rest.repos.compareCommitsWithBasehead({
     owner,
@@ -159,7 +198,7 @@ async function findPRsViaGitHubAPI(
  */
 async function fetchPRDetails(prNumbers: number[]): Promise<PRInfo[]> {
   const octokit = github.getOctokit(getApiToken())
-  const {owner, repo} = github.context.repo
+  const {owner, repo} = await detectRepo()
 
   const prs: PRInfo[] = []
   for (const num of prNumbers) {
