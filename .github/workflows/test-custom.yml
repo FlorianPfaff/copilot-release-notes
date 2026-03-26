@@ -1,0 +1,68 @@
+name: Test with Custom Instructions
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-ref:
+        description: 'Base ref (tag, branch, or SHA)'
+        required: true
+        default: 'release-3.5.6'
+      head-ref:
+        description: 'Head ref (tag, branch, or SHA)'
+        required: true
+        default: 'release-3.5.7-beta1'
+
+jobs:
+  test-custom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout desktop/desktop
+        uses: actions/checkout@v4
+        with:
+          repository: desktop/desktop
+          ref: ${{ inputs.head-ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch base ref
+        run: git fetch origin ${{ inputs.base-ref }}
+
+      - name: Checkout instructions file
+        uses: actions/checkout@v4
+        with:
+          repository: desktop/copilot-release-notes
+          path: _action-config
+          sparse-checkout: release-notes-guide.md
+
+      - name: Generate Release Notes (Custom Instructions)
+        id: notes
+        uses: desktop/copilot-release-notes@main
+        with:
+          base-ref: ${{ inputs.base-ref }}
+          head-ref: ${{ inputs.head-ref }}
+          instructions: '_action-config/release-notes-guide.md'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+
+      - name: Print release notes
+        run: |
+          echo "=== Release Notes (Custom Instructions) ==="
+          cat <<'RELEASE_NOTES_EOF'
+          ${{ steps.notes.outputs.release-notes }}
+          RELEASE_NOTES_EOF
+          echo ""
+          echo "=== JSON ==="
+          cat <<'JSON_EOF'
+          ${{ steps.notes.outputs.release-notes-json }}
+          JSON_EOF
+          echo ""
+          echo "=== Skipped PRs ==="
+          cat <<'SKIP_EOF'
+          ${{ steps.notes.outputs.skipped-prs }}
+          SKIP_EOF
+          echo ""
+          echo "=== Uncertain Entries ==="
+          cat <<'UNCERTAIN_EOF'
+          ${{ steps.notes.outputs.uncertain-entries }}
+          UNCERTAIN_EOF
