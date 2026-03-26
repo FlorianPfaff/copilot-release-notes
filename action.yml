@@ -36,5 +36,5 @@ outputs:
     description: 'JSON array of entries flagged for human review'
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
