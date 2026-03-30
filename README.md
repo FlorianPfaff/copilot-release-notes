@@ -237,6 +237,26 @@ npm test          # run 42 unit tests
 npx ncc build src/index.ts -o dist   # rebuild dist/
 ```
 
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
 
-MIT
+This project is licensed under the terms of the MIT open source license. Please refer to the [LICENSE](./LICENSE) file for the full terms.
+
+## Maintainers
+
+This project is maintained by the [@github/gh-cli-and-desktop](https://github.com/orgs/github/teams/gh-cli-and-desktop) team.
+
+## Support
+
+For bug reports and feature requests, please [open an issue](https://github.com/desktop/copilot-release-notes/issues). See [SUPPORT.md](SUPPORT.md) for more details.
+
+## Security
+
+If you discover a security vulnerability, please see [SECURITY.md](SECURITY.md) for reporting instructions. **Do not open a public issue.**
+
+## Code of Conduct
+
+This project has adopted the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
