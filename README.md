@@ -12,6 +12,16 @@ Give it two tags (or branches, or SHAs), and it analyzes every PR merged between
 - **Uncertainty flagging** — entries the AI isn't confident about are separated for human review
 - **Security hardened** — 4 rounds of adversarial review; prompt injection, workflow command injection, and secret exfiltration mitigations built in
 
+## Background
+
+This project is under **active development** and maintained by the GitHub CLI & Desktop team. Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+
+## Requirements
+
+- A **GitHub Actions** runner (Ubuntu, macOS, or Windows)
+- An active **GitHub Copilot license**
+- A **fine-grained PAT** with the `Copilot Requests: Read` permission (see [Authentication](#authentication))
+
 ## Quick Start
 
 ```yaml
