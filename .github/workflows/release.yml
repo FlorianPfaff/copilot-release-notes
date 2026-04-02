@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: read
 
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +53,7 @@ jobs:
           base-ref: ${{ steps.version.outputs.previous }}
           head-ref: ${{ github.sha }}
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
       - name: Create GitHub Release
@@ -61,8 +63,9 @@ jobs:
           name: ${{ steps.version.outputs.next }}
           body: ${{ steps.notes.outputs.release-notes }}
           draft: true
+          target_commitish: ${{ github.sha }}
 
       - name: Update major version tag
         run: |
-          git tag -f "${{ steps.version.outputs.major }}" "${{ steps.version.outputs.next }}"
-          git push origin "${{ steps.version.outputs.major }}" --force
+          git tag -f "${{ steps.version.outputs.major }}" "${{ github.sha }}"
+          git push origin "refs/tags/${{ steps.version.outputs.major }}" --force
