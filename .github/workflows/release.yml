@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine versions
+        id: version
+        run: |
+          LATEST=$(git tag --list 'v*.*.*' --sort=-v:refname | head -n 1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v0.0.0"
+          fi
+          echo "previous=$LATEST" >> "$GITHUB_OUTPUT"
+
+          # Strip 'v' prefix, split, bump, reassemble
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEXT="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "major=v${MAJOR}" >> "$GITHUB_OUTPUT"
+          echo "Releasing $NEXT (previous: $LATEST)"
+
+      - name: Generate release notes
+        id: notes
+        uses: github/copilot-release-notes@v1
+        with:
+          base-ref: ${{ steps.version.outputs.previous }}
+          head-ref: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.next }}
+          name: ${{ steps.version.outputs.next }}
+          body: ${{ steps.notes.outputs.release-notes }}
+          draft: true
+          target_commitish: ${{ github.sha }}
+
+      - name: Update major version tag
+        run: |
+          git tag -f "${{ steps.version.outputs.major }}" "${{ github.sha }}"
+          git push origin "refs/tags/${{ steps.version.outputs.major }}" --force
