@@ -35290,7 +35290,7 @@ const core = __importStar(__nccwpck_require__(7484));
 const io = __importStar(__nccwpck_require__(4994));
 const exec = __importStar(__nccwpck_require__(5236));
 const child_process_1 = __nccwpck_require__(5317);
-const COPILOT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const COPILOT_TIMEOUT_MS = Number(process.env.COPILOT_TIMEOUT_MS || 15 * 60 * 1000);
 /**
  * Ensure the Copilot CLI is installed and available.
  */
@@ -35349,12 +35349,7 @@ function buildCopilotEnv() {
  */
 async function runCopilot(copilotPath, prompt, model) {
     core.info(`Prompt size: ${prompt.length} chars`);
-    const args = [
-        '--prompt',
-        prompt,
-        '--allow-tool',
-        'shell(git)'
-    ];
+    const args = ['--allow-tool', 'shell(git)', '--no-ask-user'];
     if (model) {
         args.push('--model', model);
     }
@@ -35365,12 +35360,13 @@ async function runCopilot(copilotPath, prompt, model) {
         let killTimerId;
         const cp = (0, child_process_1.spawn)(copilotPath, args, {
             env: buildCopilotEnv(),
-            stdio: ['ignore', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
         });
+        cp.stdin.write(prompt);
+        cp.stdin.end();
         const timeoutId = setTimeout(() => {
             killed = true;
             cp.kill('SIGTERM');
-            // Always send SIGKILL after grace period — no-op if already dead
             killTimerId = setTimeout(() => {
                 try {
                     cp.kill('SIGKILL');
@@ -35380,10 +35376,7 @@ async function runCopilot(copilotPath, prompt, model) {
                 }
             }, 10_000);
         }, COPILOT_TIMEOUT_MS);
-        // Sanitize complete output to prevent workflow command injection (lines starting with ::)
-        // We sanitize the full accumulated string rather than per-chunk to avoid
-        // chunk boundaries splitting a '::' sequence across two chunks.
-        const sanitize = (text) => text.replace(/^::/gm, '  ::');
+        const sanitize = (text) => text.replace(/^::/gm, ' ::');
         cp.stdout.on('data', (data) => {
             stdout += data.toString();
         });
@@ -35392,7 +35385,6 @@ async function runCopilot(copilotPath, prompt, model) {
         });
         cp.on('close', (code) => {
             clearTimeout(timeoutId);
-            // Write sanitized output now that we have complete strings
             if (stdout)
                 process.stdout.write(sanitize(stdout));
             if (stderr)
