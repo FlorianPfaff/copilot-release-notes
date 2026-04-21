@@ -8,7 +8,7 @@ export interface CopilotResult {
   exitCode: number
 }
 
-const COPILOT_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+const COPILOT_TIMEOUT_MS = Number(process.env.COPILOT_TIMEOUT_MS || 15 * 60 * 1000)
 
 /**
  * Ensure the Copilot CLI is installed and available.
@@ -85,13 +85,7 @@ export async function runCopilot(
 ): Promise<CopilotResult> {
   core.info(`Prompt size: ${prompt.length} chars`)
 
-  const args: string[] = [
-    '--prompt',
-    prompt,
-    '--allow-tool',
-    'shell(git)'
-  ]
-
+  const args: string[] = ['--allow-tool', 'shell(git)', '--no-ask-user']
   if (model) {
     args.push('--model', model)
   }
@@ -104,13 +98,15 @@ export async function runCopilot(
 
     const cp = spawn(copilotPath, args, {
       env: buildCopilotEnv(),
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     })
+
+    cp.stdin.write(prompt)
+    cp.stdin.end()
 
     const timeoutId = setTimeout(() => {
       killed = true
       cp.kill('SIGTERM')
-      // Always send SIGKILL after grace period — no-op if already dead
       killTimerId = setTimeout(() => {
         try {
           cp.kill('SIGKILL')
@@ -120,11 +116,7 @@ export async function runCopilot(
       }, 10_000)
     }, COPILOT_TIMEOUT_MS)
 
-    // Sanitize complete output to prevent workflow command injection (lines starting with ::)
-    // We sanitize the full accumulated string rather than per-chunk to avoid
-    // chunk boundaries splitting a '::' sequence across two chunks.
-    const sanitize = (text: string): string =>
-      text.replace(/^::/gm, '  ::')
+    const sanitize = (text: string): string => text.replace(/^::/gm, ' ::')
 
     cp.stdout.on('data', (data: Buffer) => {
       stdout += data.toString()
@@ -136,8 +128,6 @@ export async function runCopilot(
 
     cp.on('close', (code: number | null) => {
       clearTimeout(timeoutId)
-
-      // Write sanitized output now that we have complete strings
       if (stdout) process.stdout.write(sanitize(stdout))
       if (stderr) process.stderr.write(sanitize(stderr))
       if (killTimerId) clearTimeout(killTimerId)
